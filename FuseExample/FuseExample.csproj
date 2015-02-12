@@ -3,8 +3,6 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
-    <ProductVersion>8.0.30703</ProductVersion>
-    <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{DEE80D01-EA85-4F20-917E-A3F8916D5299}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <RootNamespace>FuseExample</RootNamespace>
@@ -45,6 +43,9 @@
     <Reference Include="Mono.Posix">
       <Private>True</Private>
     </Reference>
+    <Reference Include="Mono.Fuse">
+      <HintPath>Libs\Mono.Fuse.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -57,6 +58,7 @@
     <Compile Include="SQL\Statistics.cs" />
     <Compile Include="Examples\TypeNavigatorFS.cs" />
     <Compile Include="SqlFS.cs" />
+    <Compile Include="TestFilesystem.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
@@ -78,11 +80,5 @@
     <None Include="Libs\Old\Mono.Fuse.dll" />
     <None Include="Libs\Mono.Fuse.dll" />
     <None Include="Libs\Mono.Posix.dll" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Mono.Fuse\Mono.Fuse.csproj">
-      <Project>{4ac81c55-dc94-4577-8a68-45134873a377}</Project>
-      <Name>Mono.Fuse</Name>
-    </ProjectReference>
   </ItemGroup>
 </Project>
