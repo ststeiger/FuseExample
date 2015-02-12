@@ -1,0 +1,88 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
+    <ProductVersion>8.0.30703</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{DEE80D01-EA85-4F20-917E-A3F8916D5299}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>FuseExample</RootNamespace>
+    <AssemblyName>FuseExample</AssemblyName>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug</OutputPath>
+    <DefineConstants>DEBUG;</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <Externalconsole>true</Externalconsole>
+    <PlatformTarget>x86</PlatformTarget>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
+    <DebugType>full</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release</OutputPath>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <Externalconsole>true</Externalconsole>
+    <PlatformTarget>x86</PlatformTarget>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="Npgsql">
+      <HintPath>Libs\Npgsql.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+    <Reference Include="MySql.Data">
+      <HintPath>Libs\MySql.Data.dll</HintPath>
+    </Reference>
+    <Reference Include="Mono.Posix">
+      <Private>True</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Examples\SimpleFS.cs" />
+    <Compile Include="Examples\HelloFS.cs" />
+    <Compile Include="Program.cs" />
+    <Compile Include="Examples\RedirectFS.cs" />
+    <Compile Include="Examples\RedirectFS-FH.cs" />
+    <Compile Include="SQL\SQL.cs" />
+    <Compile Include="SQL\Statistics.cs" />
+    <Compile Include="Examples\TypeNavigatorFS.cs" />
+    <Compile Include="SqlFS.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <ItemGroup>
+    <Content Include="Libs\Old\Mono.Posix.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="libMonoFuseHelper.so">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Libs\Npgsql.dll" />
+    <None Include="Libs\MySql.Data.dll" />
+    <None Include="SQL\mysql_nav_overview.sql" />
+    <None Include="SQL\pg_nav_overview.sql" />
+    <None Include="SQL\Insert_Data.sql" />
+    <None Include="SQL\Create_Tables_MySQL.sql" />
+    <None Include="SQL\Create_Tables_PostGre.sql" />
+    <None Include="SQL\Create_Tables_MS_SQL.sql" />
+    <None Include="SQL\ms_nav_overview.sql" />
+    <None Include="Libs\Old\Mono.Fuse.dll" />
+    <None Include="Libs\Mono.Fuse.dll" />
+    <None Include="Libs\Mono.Posix.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Mono.Fuse\Mono.Fuse.csproj">
+      <Project>{4ac81c55-dc94-4577-8a68-45134873a377}</Project>
+      <Name>Mono.Fuse</Name>
+    </ProjectReference>
+  </ItemGroup>
+</Project>
