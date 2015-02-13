@@ -47,7 +47,7 @@ namespace Mono.Fuse
 
     [Map("struct fuse_args")]
     [StructLayout(LayoutKind.Sequential)]
-    class Args
+    public class Args
     {
         public int argc;
         public IntPtr argv;

@@ -48,7 +48,9 @@ namespace Mono.Fuse
     public abstract class FileSystem : IDisposable
     {
 
-        const string LIB = "MonoFuseHelper";
+		//const string LIB = "MonoFuseHelper";
+		const string LIB = "libMonoFuseHelper";
+
 
         [DllImport(LIB, SetLastError = true)]
         private static extern int mfh_fuse_main(int argc, IntPtr argv, IntPtr op);

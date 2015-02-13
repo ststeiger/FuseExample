@@ -62,9 +62,6 @@
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
-    <Content Include="Libs\Old\Mono.Posix.dll" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="libMonoFuseHelper.so">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -77,8 +74,9 @@
     <None Include="SQL\Create_Tables_PostGre.sql" />
     <None Include="SQL\Create_Tables_MS_SQL.sql" />
     <None Include="SQL\ms_nav_overview.sql" />
-    <None Include="Libs\Old\Mono.Fuse.dll" />
-    <None Include="Libs\Mono.Fuse.dll" />
     <None Include="Libs\Mono.Posix.dll" />
+    <None Include="Libs\Mono.Fuse.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 </Project>

@@ -71,8 +71,8 @@ namespace FuseExample
             csb.Host = "127.0.0.1";
             csb.Database = "testdb";
 
-            csb.UserName = "postgres";
-            csb.Password = "Inspiron1300";
+            csb.UserName = "pgfuse";
+            csb.Password = "p";
 
             // PORT=5432;TIMEOUT=15;POOLING=True;MINPOOLSIZE=1;MAXPOOLSIZE=20;COMMANDTIMEOUT=20;COMPATIBLE=2.2.0.0;HOST=127.0.0.1;DATABASE=testdb;USER ID=postgres;PASSWORD=Inspiron1300
             return csb.ConnectionString;
@@ -125,6 +125,48 @@ namespace FuseExample
             return con;
         }
 
+
+		public static T ExecuteScalar<T>(string strSQL)
+		{
+			object obj = ExecuteScalar (strSQL);
+
+			if(typeof(T) == typeof(int))
+			{
+				int i = System.Convert.ToInt32(obj);
+				return (T)(object)i;
+			}
+			else if(typeof(T) == typeof(long))
+			{
+				long i = System.Convert.ToInt64(obj);
+				return (T)(object)i;
+			}
+
+			return (T) obj;
+		}
+
+
+		public static int ExecuteNonQuery(string strSQL)
+		{
+			int iRet = 0;
+
+			using (System.Data.Common.DbConnection con = GetConnection())
+			{
+				using (System.Data.Common.DbCommand cmd = con.CreateCommand())
+				{
+					cmd.CommandText = strSQL;
+					if (con.State != System.Data.ConnectionState.Open)
+						con.Open();
+
+					iRet = cmd.ExecuteNonQuery();
+
+					if (con.State != System.Data.ConnectionState.Closed)
+						con.Close();
+				} // End Using cmd
+
+			} // End using con 
+
+			return iRet;
+		}
 
 
         // protected static object objLock = new object();

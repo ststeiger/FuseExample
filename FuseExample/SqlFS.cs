@@ -16,8 +16,8 @@ namespace FuseExample
 
     // apt-get install libmono-fuse-cil
     // gmcs -r:Mono.Fuse.dll -r:Mono.Posix.dll SimpleFS.cs
-	// public class SqlFS : Mono.Fuse.FileSystem
-	public class SqlFS : Mono.Fuse.TestFileSystem
+	public class SqlFS : Mono.Fuse.FileSystem
+	// public class SqlFS : Mono.Fuse.TestFileSystem
     {
 
         private List<string> files = new List<string>();
@@ -112,7 +112,7 @@ namespace FuseExample
 
         protected override Errno OnCreateHandle(string path, Mono.Fuse.OpenedPathInfo info, FilePermissions mode)
         {
-            System.Console.WriteLine("create");
+			System.Console.WriteLine("OnCreateHandle");
             /*
             int fd = Syscall.open (basedir + path, info.OpenFlags, mode);
             if (fd == -1)
@@ -127,6 +127,7 @@ namespace FuseExample
 
         protected override Errno OnOpenHandle(string path, Mono.Fuse.OpenedPathInfo fi)
         {
+			System.Console.WriteLine("OnOpenHandle");
             // Trace.WriteLine (string.Format ("(OnOpen {0} Flags={1})", path, fi.OpenFlags));
 
             //if (path != hello_path && path != data_path && path != data_im_path) return Errno.ENOENT;
@@ -142,6 +143,8 @@ namespace FuseExample
 
         protected override Errno OnReadHandle(string path, Mono.Fuse.OpenedPathInfo fi, byte[] buf, long offset, out int bytesWritten)
         {
+			System.Console.WriteLine("OnReadHandle");
+
             // Trace.WriteLine ("(OnRead {0})", path);
             bytesWritten = 0;
             long szeBufferSize = buf.LongLength;
@@ -167,13 +170,45 @@ namespace FuseExample
 
         protected override Errno OnCreateDirectory(string directory, FilePermissions mode)
         {
-            return base.OnCreateDirectory(directory, mode);
+			System.Console.WriteLine("OnCreateDirectory");
+
+			string parentPath = System.IO.Path.GetDirectoryName (directory);
+			string dir = System.IO.Path.GetFileName(directory);
+
+			// SQL.ExecuteScalar<int> ("SELECT COALESCE(MAX(path_id), 0) + 1 AS newid FROM t_paths\n");
+
+			string strSQL = @"
+INSERT INTO t_paths(path_id, real_path_id, name, typ, parent_path_id)
+VALUES 
+(
+	 (SELECT COALESCE(MAX(path_id), 0) + 1 AS newid FROM T_Paths) -- path_id bigint NOT NULL
+	,(SELECT COALESCE(MAX(path_id), 0) + 1 AS newid FROM T_Paths)  -- real_path_id bigint NOT NULL
+	,'{0}' -- name character varying(255)
+	,'Folder' -- typ character varying(20)
+	,(SELECT path_id FROM T_Paths WHERE name = '{1}') -- parent_path_id bigint
+);
+
+-- SELECT * FROM T_Paths WHERE name = 'Foobarxyz'
+-- DELETE FROM T_Paths WHERE name = 'Foobarxyz'
+";
+
+			strSQL = string.Format(strSQL, dir.Replace("'","''"), parentPath.Replace("'","''"));
+			System.Console.WriteLine(strSQL);
+			SQL.ExecuteNonQuery(strSQL);
+
+			// return Errno.ECONNABORTED;
+			// mode = NativeConvert.FromUnixPermissionString("dr-xr-xr-x");
+
+            // return base.OnCreateDirectory(directory, mode);
+			return 0;
         }
 
 
         protected override unsafe Errno OnWriteHandle(string path, Mono.Fuse.OpenedPathInfo info,
             byte[] buf, long offset, out int bytesWritten)
         {
+			System.Console.WriteLine("OnWriteHandle");
+
             Errno e = 0;
 
             using (System.IO.FileStream fs = new System.IO.FileStream("/mnt/repo/lol.txt", System.IO.FileMode.Append))
@@ -190,6 +225,9 @@ namespace FuseExample
                                                   Mono.Fuse.OpenedPathInfo info,
                                                   out IEnumerable<Mono.Fuse.DirectoryEntry> names)
         {
+			System.Console.WriteLine("OnReadDirectory");
+
+
 
             // if (directory != "/")
             // {
@@ -269,6 +307,8 @@ ORDER BY obj_text
 
         protected override Errno OnGetPathStatus(string path, out Stat stbuf)
         {
+			// System.Console.WriteLine("OnGetPathStatus for path \"{0}\"", path);
+
             stbuf = new Stat();
 
             if (path == "/")
@@ -309,7 +349,10 @@ ORDER BY obj_text
             }
             else
             {
-                System.Console.WriteLine("Rogue path: \"{0}\"", path);
+				System.Console.WriteLine("Rogue path: \"{0}\"", path);
+
+				return Errno.ENOENT;
+				// This is wrong...
                 stbuf.st_mode = NativeConvert.FromUnixPermissionString("dr-xr-xr-x");
                 stbuf.st_nlink = 1;
             }
