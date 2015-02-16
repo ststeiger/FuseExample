@@ -50,7 +50,7 @@ namespace FuseExample
 
             strPath = strPath.Replace("'", "''");
             string strSQL = string.Format(
-                                  @"SELECT isdir FROM nav_overview WHERE (1=1) AND obj_path = '{0}'"
+				@"SELECT isdir FROM t_overview WHERE (1=1) AND obj_path = '{0}'"
                                  , strPath
             );
 
@@ -84,7 +84,7 @@ namespace FuseExample
                 return "AND obj_parent_uid IS NULL ";
 
             strPath = strPath.Replace("'", "''");
-            string strSQL = string.Format(@"SELECT obj_uid FROM nav_overview WHERE (1=1) AND obj_path = '{0}'"
+			string strSQL = string.Format(@"SELECT obj_uid FROM t_overview WHERE (1=1) AND obj_path = '{0}'"
                                  , strPath
             );
 
@@ -176,9 +176,8 @@ namespace FuseExample
 			string dir = System.IO.Path.GetFileName(directory);
 
 			// SQL.ExecuteScalar<int> ("SELECT COALESCE(MAX(path_id), 0) + 1 AS newid FROM t_paths\n");
-
-			string strSQL = @"
-INSERT INTO t_paths(path_id, real_path_id, name, typ, parent_path_id)
+/*
+ * INSERT INTO t_paths(path_id, real_path_id, name, typ, parent_path_id)
 VALUES 
 (
 	 (SELECT COALESCE(MAX(path_id), 0) + 1 AS newid FROM T_Paths) -- path_id bigint NOT NULL
@@ -187,12 +186,25 @@ VALUES
 	,'Folder' -- typ character varying(20)
 	,(SELECT path_id FROM T_Paths WHERE name = '{1}') -- parent_path_id bigint
 );
+*/
+			string strSQL = @"
+INSERT INTO t_overview(obj_uid, obj_parent_uid, obj_no, obj_text, obj_path, isdir)
+SELECT 
+	 '{2}' AS obj_uid
+	,(SELECT obj_uid FROM t_overview WHERE obj_path = '{1}') AS obj_parent_uid
+	,'666' AS obj_no
+	,'{0}' -- obj_text
+	,'{1}/{0}' -- obj_path
+	,1 AS isdir
 
 -- SELECT * FROM T_Paths WHERE name = 'Foobarxyz'
 -- DELETE FROM T_Paths WHERE name = 'Foobarxyz'
 ";
 
-			strSQL = string.Format(strSQL, dir.Replace("'","''"), parentPath.Replace("'","''"));
+			strSQL = string.Format(strSQL, dir.Replace("'","''")
+				, parentPath.Replace("'","''")
+				,System.Guid.NewGuid().ToString()
+			);
 			System.Console.WriteLine(strSQL);
 			SQL.ExecuteNonQuery(strSQL);
 
@@ -252,7 +264,7 @@ SELECT -- obj_parent_uid, COUNT(*) AS cnt
 	,obj_text
 	,obj_path
 	,isdir 
-FROM nav_overview 
+FROM t_overview 
 WHERE (1=1) 
 {0} 
 -- AND obj_parent_uid IS NULL 
