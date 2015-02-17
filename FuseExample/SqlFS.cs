@@ -221,6 +221,7 @@ SELECT
         {
 			System.Console.WriteLine("OnWriteHandle");
 
+
             Errno e = 0;
 
             using (System.IO.FileStream fs = new System.IO.FileStream("/mnt/repo/lol.txt", System.IO.FileMode.Append))
@@ -238,8 +239,6 @@ SELECT
                                                   out IEnumerable<Mono.Fuse.DirectoryEntry> names)
         {
 			System.Console.WriteLine("OnReadDirectory");
-
-
 
             // if (directory != "/")
             // {

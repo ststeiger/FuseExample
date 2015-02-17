@@ -9,6 +9,11 @@ namespace FuseExample
 
         public static void Main(string[] args)
         {
+			System.Diagnostics.ConsoleTraceListener consoleTracer;
+			consoleTracer = new System.Diagnostics.ConsoleTraceListener(true);
+			consoleTracer.Name = "mainConsoleTracer";
+			System.Diagnostics.Trace.Listeners.Add(consoleTracer);
+
             string[] argsMountPoint = new string[] { "/mnt/fuse" };
             string[] argsRedirectFS = new string[] { "/mnt/fuse", "/root/Downloads/fuse-tutorial-2014-06-12/html" };
 
