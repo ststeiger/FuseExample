@@ -79,5 +79,7 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="SQL\t_overview.sql" />
+    <None Include="SQL\fs.sql" />
+    <None Include="SQL\pgfs.sql" />
   </ItemGroup>
 </Project>

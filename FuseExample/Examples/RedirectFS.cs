@@ -318,6 +318,7 @@ namespace FuseExample
 			return 0;
 		}
 
+
 		protected override Errno OnRemovePathExtendedAttribute (string path, string name)
 		{
 			int r = Syscall.lremovexattr (basedir + path, name);
@@ -325,7 +326,6 @@ namespace FuseExample
 				return Stdlib.GetLastError ();
 			return 0;
 		}
-
 
 
 		/*
@@ -337,6 +337,7 @@ namespace FuseExample
 			return e;
 		}
 		*/
+
 
 		private bool ParseArguments (string[] args)
 		{

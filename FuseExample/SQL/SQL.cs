@@ -210,10 +210,11 @@ namespace FuseExample
                     {
                         da.SelectCommand = cmd;
                         da.Fill(dt);
-                    } // End Using da
+                    } // End Using da 
 
-                } // End Using cmd
-            } // End Using con
+                } // End Using cmd 
+
+            } // End Using con 
 
             return dt;
         }

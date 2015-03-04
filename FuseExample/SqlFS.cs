@@ -38,8 +38,37 @@ namespace FuseExample
             folders.Add("/фолдер4");
         }
 
+		public bool IgnoreCase = true;
 
-        protected static bool? IsFolder(string strPath)
+		public string olc(string optionalLowerCase)
+		{
+			if (string.IsNullOrEmpty (optionalLowerCase))
+				return optionalLowerCase;
+
+			if (IgnoreCase)
+				return optionalLowerCase.ToLowerInvariant ();
+
+			return optionalLowerCase;
+		}
+
+
+		protected override Errno OnAccessPath (string path, AccessModes mask)
+		{
+			System.Console.WriteLine ("OnAccessPath (path: \"{0}\")", path);
+			// return Errno.ENAMETOOLONG; // 
+			// return Errno.EROFS; // No write rights
+			/*
+			// Check accessibility according to bit-pattern in mask
+			int r = Syscall.access (basedir + path, mask);
+			if (r == -1)
+				return Stdlib.GetLastError ();
+			*/
+			return 0;
+		}
+
+
+
+        protected bool? IsFolder(string strPath)
         {
             //lock (objLock)
             //{
@@ -48,10 +77,13 @@ namespace FuseExample
             if (string.IsNullOrEmpty(strPath))
                 return bIsFolder;
 
+
+			strPath = olc(strPath);
+
             strPath = strPath.Replace("'", "''");
             string strSQL = string.Format(
-				@"SELECT isdir FROM t_overview WHERE (1=1) AND obj_path = '{0}'"
-                                 , strPath
+				@"SELECT FS_isFolder  FROM T_Filesystem WHERE FS_LowerCasePath = '{0}';"
+                , strPath
             );
 
             try
@@ -81,10 +113,10 @@ namespace FuseExample
                 return "AND (1 = 2) ";
 
             if (System.StringComparer.InvariantCultureIgnoreCase.Equals(strPath, "/"))
-                return "AND obj_parent_uid IS NULL ";
+				return "AND FS_Parent_FS_Id IS NULL ";
 
             strPath = strPath.Replace("'", "''");
-			string strSQL = string.Format(@"SELECT obj_uid FROM t_overview WHERE (1=1) AND obj_path = '{0}'"
+			string strSQL = string.Format(@"SELECT fs_id FROM T_Filesystem WHERE (1=1) AND FS_LowerCasePath = '{0}'"
                                  , strPath
             );
 
@@ -96,7 +128,7 @@ namespace FuseExample
                     strRetVal = "AND (1 = 2) ";
                 else
                 {
-                    strRetVal = "AND obj_parent_uid = '" + System.Convert.ToString(obj) + "' ";
+					strRetVal = "AND FS_Parent_FS_Id = '" + System.Convert.ToString(obj) + "' ";
                 }
 
             }
@@ -112,7 +144,32 @@ namespace FuseExample
 
         protected override Errno OnCreateHandle(string path, Mono.Fuse.OpenedPathInfo info, FilePermissions mode)
         {
-			System.Console.WriteLine("OnCreateHandle");
+			System.Console.WriteLine("OnCreateHandle (path: \"{0}\")", path);
+
+			string fn = System.IO.Path.GetFileName (path);
+			string dn = System.IO.Path.GetDirectoryName (path);
+
+			string strSQL = @"
+INSERT INTO T_Filesystem(FS_Id, FS_Target_FS_Id, FS_Parent_FS_Id, FS_Text, FS_Path, FS_LowerCasePath, FS_isFolder) 
+SELECT 
+	 (SELECT COALESCE(MAX(FS_Id), 0) + 1 AS newid FROM T_Filesystem) AS FS_Id 
+    ,(SELECT COALESCE(MAX(FS_Id), 0) + 1 AS newid FROM T_Filesystem) AS FS_Target_FS_Id 
+	,(SELECT FS_Id FROM T_Filesystem WHERE FS_LowerCasePath = '{3}') AS FS_Parent_FS_Id 
+	,'{0}' -- FS_Text 
+	,'{1}' -- FS_Path 
+	,'{2}' -- FS_LowerCasePath 
+	,0::bit AS FS_isFolder 
+";
+
+			strSQL = string.Format(strSQL
+				,fn.Replace("'","''") // 0
+				,path.Replace("'","''") // 1 
+				,olc(path).Replace("'","''") // 2 
+				,olc(dn).Replace("'","''") // 3 
+			);
+			System.Console.WriteLine(strSQL);
+			SQL.ExecuteNonQuery(strSQL);
+
             /*
             int fd = Syscall.open (basedir + path, info.OpenFlags, mode);
             if (fd == -1)
@@ -127,7 +184,7 @@ namespace FuseExample
 
         protected override Errno OnOpenHandle(string path, Mono.Fuse.OpenedPathInfo fi)
         {
-			System.Console.WriteLine("OnOpenHandle");
+			System.Console.WriteLine("OnOpenHandle (path: \"{0}\")", path);
             // Trace.WriteLine (string.Format ("(OnOpen {0} Flags={1})", path, fi.OpenFlags));
 
             //if (path != hello_path && path != data_path && path != data_im_path) return Errno.ENOENT;
@@ -143,7 +200,7 @@ namespace FuseExample
 
         protected override Errno OnReadHandle(string path, Mono.Fuse.OpenedPathInfo fi, byte[] buf, long offset, out int bytesWritten)
         {
-			System.Console.WriteLine("OnReadHandle");
+			System.Console.WriteLine("OnReadHandle (path: \"{0}\")", path);
 
             // Trace.WriteLine ("(OnRead {0})", path);
             bytesWritten = 0;
@@ -167,43 +224,45 @@ namespace FuseExample
         }
 
 
+		// Move or rename dir/file
+		protected override Errno OnRenamePath (string from, string to)
+		{
+			System.Console.WriteLine("OnRenamePath (from \"{0}\" to \"{1}\")", from, to);
+
+			/*
+			int r = Syscall.rename (basedir + from, basedir + to);
+			if (r == -1)
+				return Stdlib.GetLastError ();
+			*/
+			return 0;
+		}
+
 
         protected override Errno OnCreateDirectory(string directory, FilePermissions mode)
         {
-			System.Console.WriteLine("OnCreateDirectory");
+			System.Console.WriteLine("OnCreateDirectory (dir \"{0}\")", directory);
 
 			string parentPath = System.IO.Path.GetDirectoryName (directory);
 			string dir = System.IO.Path.GetFileName(directory);
 
-			// SQL.ExecuteScalar<int> ("SELECT COALESCE(MAX(path_id), 0) + 1 AS newid FROM t_paths\n");
-/*
- * INSERT INTO t_paths(path_id, real_path_id, name, typ, parent_path_id)
-VALUES 
-(
-	 (SELECT COALESCE(MAX(path_id), 0) + 1 AS newid FROM T_Paths) -- path_id bigint NOT NULL
-	,(SELECT COALESCE(MAX(path_id), 0) + 1 AS newid FROM T_Paths)  -- real_path_id bigint NOT NULL
-	,'{0}' -- name character varying(255)
-	,'Folder' -- typ character varying(20)
-	,(SELECT path_id FROM T_Paths WHERE name = '{1}') -- parent_path_id bigint
-);
-*/
 			string strSQL = @"
-INSERT INTO t_overview(obj_uid, obj_parent_uid, obj_no, obj_text, obj_path, isdir)
+INSERT INTO T_Filesystem(FS_Id, FS_Target_FS_Id, FS_Parent_FS_Id, FS_Text, FS_Path, FS_LowerCasePath, FS_isFolder) 
 SELECT 
-	 '{2}' AS obj_uid
-	,(SELECT obj_uid FROM t_overview WHERE obj_path = '{1}') AS obj_parent_uid
-	,'666' AS obj_no
-	,'{0}' -- obj_text
-	,'{1}/{0}' -- obj_path
-	,1 AS isdir
+	 (SELECT COALESCE(MAX(FS_Id), 0) + 1 AS newid FROM T_Filesystem) AS FS_Id 
+    ,(SELECT COALESCE(MAX(FS_Id), 0) + 1 AS newid FROM T_Filesystem) AS FS_Target_FS_Id
+	,(SELECT FS_Id FROM T_Filesystem WHERE FS_LowerCasePath = '{2}') AS FS_Parent_FS_Id 
+	,'{0}' -- FS_Text
+	,'{1}/{0}' -- FS_Path
+	,'{3}' -- FS_LowerCasePath
+	,1::bit AS FS_isFolder
 
--- SELECT * FROM T_Paths WHERE name = 'Foobarxyz'
--- DELETE FROM T_Paths WHERE name = 'Foobarxyz'
 ";
 
-			strSQL = string.Format(strSQL, dir.Replace("'","''")
-				, parentPath.Replace("'","''")
-				,System.Guid.NewGuid().ToString()
+			strSQL = string.Format(strSQL
+				,dir.Replace("'","''") // FS_Text
+				,parentPath.Replace("'","''") // FS_Path
+				,olc(parentPath).Replace("'","''") // FS_Path
+				,olc(parentPath).Replace("'","''") + "/" +  olc(dir).Replace("'","''")// FS_LowerCasePath
 			);
 			System.Console.WriteLine(strSQL);
 			SQL.ExecuteNonQuery(strSQL);
@@ -214,6 +273,40 @@ SELECT
             // return base.OnCreateDirectory(directory, mode);
 			return 0;
         }
+
+
+		protected override Errno OnCreateSymbolicLink (string from, string to)
+		{
+			// int r = Syscall.symlink (from, basedir + to);
+			// if (r == -1) return Stdlib.GetLastError ();
+			return 0;
+		}
+
+
+		protected override Errno OnRemoveFile (string path)
+		{
+			string strSQL = @"DELETE FROM T_Filesystem WHERE FS_LowerCasePath = '{0}';";
+			strSQL = string.Format(strSQL, olc(path).Replace("'","''"));
+			SQL.ExecuteNonQuery (strSQL);
+
+			// int r = Syscall.unlink (basedir + path);
+			// if (r == -1) return Stdlib.GetLastError ();
+			return 0;
+		}
+
+
+		protected override Errno OnRemoveDirectory (string path)
+		{
+			string strSQL = @"DELETE FROM T_Filesystem WHERE FS_LowerCasePath = '{0}'";
+			strSQL = string.Format(strSQL, olc(path).Replace("'","''"));
+
+			SQL.ExecuteNonQuery (strSQL);
+
+			// int r = Syscall.rmdir (basedir + path);
+			// if (r == -1)
+			// 	return Stdlib.GetLastError ();
+			return 0;
+		}
 
 
         protected override unsafe Errno OnWriteHandle(string path, Mono.Fuse.OpenedPathInfo info,
@@ -239,6 +332,8 @@ SELECT
                                                   out IEnumerable<Mono.Fuse.DirectoryEntry> names)
         {
 			System.Console.WriteLine("OnReadDirectory");
+			directory = olc(directory);
+
 
             // if (directory != "/")
             // {
@@ -256,24 +351,16 @@ SELECT
             List<Mono.Fuse.DirectoryEntry> ls = new List<Mono.Fuse.DirectoryEntry>();
 
             string strSQL = @"
-SELECT -- obj_parent_uid, COUNT(*) AS cnt 
-	 obj_uid
-	,obj_parent_uid
-	,obj_no
-	,obj_text
-	,obj_path
-	,isdir 
-FROM t_overview 
+SELECT 
+	 FS_Id
+	--,FS_Parent_FS_Id
+	,FS_Text
+	--,FS_Path
+	-- ,FS_isFolder 
+FROM T_Filesystem 
 WHERE (1=1) 
 {0} 
--- AND obj_parent_uid IS NULL 
--- AND obj_path = '/Adelboden'
--- AND obj_parent_uid = 'f7c360ca-3da7-4e25-bbca-2ab3cb826ffc' 
--- AND obj_parent_uid = '7f58afb4-0e18-4086-834a-87e09ac6adf7' 
--- AND obj_text IS NULL 
--- AND obj_text ILIKE '%Le Rond%'
--- GROUP BY obj_parent_uid ORDER BY cnt DESC 
-ORDER BY obj_text 
+ORDER BY FS_Text 
 ";
 
 
@@ -284,7 +371,11 @@ ORDER BY obj_text
 
             foreach (System.Data.DataRow dr in dt.Rows)
             {
-                string str = System.Convert.ToString(dr["obj_text"]);
+				ulong id = System.Convert.ToUInt64(dr["FS_Id"]);
+				string str = System.Convert.ToString(dr["FS_Text"]);
+				// string str = System.Convert.ToString(dr["FS_Path"]);
+				// str = System.IO.Path.GetFileName (str);
+
 
                 if (str == null)
                 {
@@ -295,8 +386,12 @@ ORDER BY obj_text
                 int iPos = str.IndexOf("/");
 
                 // LogDetails("adding " + str);
-                if (iPos == -1)
-                    ls.Add(new Mono.Fuse.DirectoryEntry(str));
+				if (iPos == -1)
+				{
+					Mono.Fuse.DirectoryEntry de = new Mono.Fuse.DirectoryEntry (str);
+					de.Stat.st_ino = id;
+					ls.Add(de);
+				}
                 else
                 {
                     LogDetails(@"skipped entry containing ""/"" to prevent fatal error");
@@ -333,15 +428,35 @@ ORDER BY obj_text
             // if(!files.Any(x => path.Contains(x)) && !folders.Any(x => path.Contains(x)))
             // 	return Errno.ENOENT;
 
-            // /.Trash-0
-
             List<string> tra = new List<string>();
-            tra.Add("/.Trash-0");
-            tra.Add("/.Trash");
-            tra.Add("/.hidden");
 
-            if (tra.Contains(path, System.StringComparer.InvariantCultureIgnoreCase))
-                return 0;
+			// For move-to-trash
+			tra.Add("/.Trash");
+			tra.Add("/.Trash/0");
+			tra.Add("/.Trash/0/info");
+			tra.Add("/.Trash/0/files");
+			tra.Add("/.Trash-0");
+			tra.Add("/.Trash-0/info");
+			tra.Add("/.Trash-0/files");
+
+			// For Locate
+			tra.Add("/info");
+
+
+			if (tra.Exists ( fragment => 
+				System.StringComparer.InvariantCultureIgnoreCase.Equals(path,fragment)
+				// System.Globalization.CultureInfo.InvariantCulture.CompareInfo.IndexOf(path, fragment, System.Globalization.CompareOptions.IgnoreCase) != -1
+			) ||
+				path.EndsWith("/.hidden", System.StringComparison.InvariantCultureIgnoreCase)
+
+			)
+			{
+				System.Console.WriteLine ("Virtual Trash dir: \"{0}\"", path);
+				stbuf.st_mode = NativeConvert.FromUnixPermissionString("dr-xr-xr-x");
+				stbuf.st_nlink = 1;
+				return 0;
+			}
+                
 
             bool? isf = IsFolder(path);
             if (isf.HasValue)
