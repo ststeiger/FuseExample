@@ -1,25 +1,222 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
+﻿
 namespace FuseExample
 {
 
 
-    internal class SQL
+    internal static class SQL
     {
+		private static System.Reflection.BindingFlags m_CaseSensitivity = 
+			  System.Reflection.BindingFlags.Instance
+			| System.Reflection.BindingFlags.Public
+			| System.Reflection.BindingFlags.IgnoreCase
+		;
+
+
+		private static bool IsNullable(System.Type t)
+		{
+			if (t == null)
+				return false;
+
+			return t.IsGenericType && object.ReferenceEquals(t.GetGenericTypeDefinition(), typeof(System.Nullable<>));
+		} // End Function IsNullable
+
+		private static bool Log(System.Exception ex, System.Data.IDbCommand cmd)
+		{
+			System.Console.WriteLine(ex.Message);
+			System.Console.WriteLine (cmd.CommandText);
+
+			return true; // Rethrow
+		}
+
+		private static System.Reflection.MemberInfo GetMemberInfo(System.Type t, string strName)
+		{
+			System.Reflection.MemberInfo mi = t.GetField(strName, m_CaseSensitivity);
+
+			if (mi == null)
+				mi = t.GetProperty(strName, m_CaseSensitivity);
+
+			return mi;
+		} // End Function GetMemberInfo
+
+
+		private static void SetMemberValue(object obj, System.Reflection.MemberInfo mi, object objValue)
+		{
+			if (mi is System.Reflection.FieldInfo)
+			{
+				System.Reflection.FieldInfo fi = (System.Reflection.FieldInfo)mi;
+				fi.SetValue(obj, MyChangeType(objValue, fi.FieldType));
+				return;
+			}
+
+			if (mi is System.Reflection.PropertyInfo)
+			{
+				System.Reflection.PropertyInfo pi = (System.Reflection.PropertyInfo)mi;
+				pi.SetValue(obj, MyChangeType(objValue, pi.PropertyType), null);
+				return;
+			}
+
+			// Else silently ignore value
+		} // End Sub SetMemberValue
+
+
+		private static object MyChangeType(object objVal, System.Type t)
+		{
+			if (objVal == null || object.ReferenceEquals(objVal, System.DBNull.Value))
+			{
+				return null;
+			}
+
+			//getbasetype
+			System.Type tThisType = objVal.GetType();
+
+			bool bNullable = IsNullable(t);
+			if (bNullable)
+			{
+				t = System.Nullable.GetUnderlyingType(t);
+			}
+
+			if (object.ReferenceEquals(t, typeof(string)) && object.ReferenceEquals(tThisType, typeof(System.Guid)))
+			{
+				return objVal.ToString();
+			}
+
+			return System.Convert.ChangeType(objVal, t);
+		} // End Function MyChangeType
+
+
+		public static System.Data.IDataReader ExecuteReader(System.Data.IDbCommand cmd)
+		{
+			System.Data.IDataReader idr = null;
+
+			lock (cmd)
+			{
+				System.Data.IDbConnection idbc = GetConnection();
+				cmd.Connection = idbc;
+
+				if (cmd.Connection.State != System.Data.ConnectionState.Open)
+					cmd.Connection.Open();
+
+				try
+				{
+					idr = cmd.ExecuteReader(System.Data.CommandBehavior.CloseConnection);
+				}
+				catch (System.Exception ex)
+				{
+					if (Log(ex, cmd))
+						throw;
+				}
+			} // End Lock cmd
+
+			return idr;
+		} // End Function ExecuteReader
+
+
+		public static System.Data.IDataReader ExecuteReader(string strSQL)
+		{
+			System.Data.IDataReader idr = null;
+
+			using (System.Data.IDbCommand cmd = CreateCommand(strSQL))
+			{
+				idr = ExecuteReader(cmd);
+			} // End Using cmd
+
+			return idr;
+		} // End Function ExecuteReader
+
+
+		public static T GetClass<T>(System.Data.IDbCommand cmd, T tThisClassInstance)
+		{
+			System.Type t = typeof(T);
+
+			lock (cmd)
+			{
+				using (System.Data.IDataReader idr = ExecuteReader(cmd))
+				{
+
+					lock (idr)
+					{
+
+						bool bHasNoRows = true;
+
+						while (idr.Read())
+						{
+							bHasNoRows = false;
+
+							for (int i = 0; i < idr.FieldCount; ++i)
+							{
+								string strName = idr.GetName(i);
+								object objVal = idr.GetValue(i);
+
+								System.Reflection.MemberInfo mi = GetMemberInfo(t, strName);
+								SetMemberValue(tThisClassInstance, mi, objVal);
+
+								/*
+                                System.Reflection.FieldInfo fi = t.GetField(strName, m_CaseSensitivity);
+                                if (fi != null)
+                                    fi.SetValue(tThisClassInstance, MyChangeType(objVal, fi.FieldType));
+                                else
+                                {
+                                    System.Reflection.PropertyInfo pi = t.GetProperty(strName, m_CaseSensitivity);
+                                    if (pi != null)
+                                        pi.SetValue(tThisClassInstance, MyChangeType(objVal, pi.PropertyType), null);
+
+                                } // End else of if (fi != null)
+                                */
+							} // Next i
+
+							break;
+						} // Whend
+
+						idr.Close();
+
+						if (bHasNoRows)
+							tThisClassInstance = default(T);
+
+					} // End Lock idr
+
+				} // End Using idr
+
+			} // End lock cmd
+
+			return tThisClassInstance;
+		} // End Function GetClass
+
+
+		public static T GetClass<T>(System.Data.IDbCommand cmd)
+		{
+			T tThisClassInstance = System.Activator.CreateInstance<T>();
+			return GetClass<T>(cmd, tThisClassInstance);
+		}
+
+
+		public static T GetClass<T>(string strSQL)
+		{
+			T tReturnClassInstance = default(T);
+
+			using (System.Data.IDbCommand cmd = CreateCommand(strSQL))
+			{
+				tReturnClassInstance = GetClass<T>(cmd);
+			} // End Using cmd
+
+			return tReturnClassInstance;
+		} // End Function GetClass
 
 
 
-        protected static System.Data.Common.DbProviderFactory GetFactory<T>()
+
+
+
+
+
+
+		private static System.Data.Common.DbProviderFactory GetFactory<T>()
         {
             System.Type t = typeof(T);
             return GetFactory(t);
         } // End Function GetFactory
 
 
-        protected static System.Data.Common.DbProviderFactory GetFactory(string assemblyType)
+		private static System.Data.Common.DbProviderFactory GetFactory(string assemblyType)
         {
 #if TARGET_JVM // case insensitive GetType is not supported
 			System.Type type = System.Type.GetType (assemblyType, false);
@@ -31,7 +228,7 @@ namespace FuseExample
         } // End Function GetFactory
 
 
-        protected static System.Data.Common.DbProviderFactory GetFactory(System.Type type)
+		private static System.Data.Common.DbProviderFactory GetFactory(System.Type type)
         {
             if (type != null && type.IsSubclassOf(typeof(System.Data.Common.DbProviderFactory)))
             {
@@ -55,17 +252,26 @@ namespace FuseExample
         } // End Function GetFactory
 
 
-        protected static System.Data.Common.DbProviderFactory GetFactory()
+		private static System.Data.Common.DbProviderFactory GetFactory()
         {
             return GetFactory(typeof(Npgsql.NpgsqlFactory));
             // return GetFactory(typeof(MySql.Data.MySqlClient.MySqlClientFactory));
             // return GetFactory(typeof(System.Data.SqlClient.SqlClientFactory));
         }
 
-        protected static System.Data.Common.DbProviderFactory factory = GetFactory();
+		private static System.Data.Common.DbProviderFactory factory = GetFactory();
+
+		public static System.Data.IDbCommand CreateCommand(string strSQL)
+		{
+			System.Data.IDbCommand cmd = factory.CreateCommand ();
+			cmd.CommandText = strSQL;
+
+			return cmd;
+		}
 
 
-        protected static string GetPgConnectionString()
+
+		private static string GetPgConnectionString()
         {
             Npgsql.NpgsqlConnectionStringBuilder csb = new Npgsql.NpgsqlConnectionStringBuilder();
             csb.Host = "127.0.0.1";
@@ -79,7 +285,7 @@ namespace FuseExample
         }
 
 
-        protected static string GetMySQLConnectionString()
+		private static string GetMySQLConnectionString()
         {
             MySql.Data.MySqlClient.MySqlConnectionStringBuilder csb = new MySql.Data.MySqlClient.MySqlConnectionStringBuilder();
             csb.Server = "127.0.0.1";
@@ -92,7 +298,7 @@ namespace FuseExample
         }
 
 
-        protected static string GetMSSQLConnectionString()
+		private static string GetMSSQLConnectionString()
         {
             System.Data.SqlClient.SqlConnectionStringBuilder csb =
                 new System.Data.SqlClient.SqlConnectionStringBuilder();
@@ -106,7 +312,7 @@ namespace FuseExample
         }
 
 
-        protected static System.Data.Common.DbConnection GetConnection()
+		private static System.Data.Common.DbConnection GetConnection()
         {
             System.Data.Common.DbConnection con = factory.CreateConnection();
 

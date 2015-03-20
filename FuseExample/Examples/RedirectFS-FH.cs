@@ -89,7 +89,7 @@ namespace FuseExample
 			target = null;
 			StringBuilder buf = new StringBuilder (256);
 			do
-			{
+			{	
 				int r = Syscall.readlink (basedir + path, buf);
 				if (r < 0)
 				{

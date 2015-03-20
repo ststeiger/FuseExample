@@ -37,3 +37,22 @@ CREATE TABLE IF NOT EXISTS T_FileSystem
 	 
 	,CONSTRAINT PK_T_FileSystem PRIMARY KEY(FS_Id) 
 ); 
+
+
+
+
+DO $$
+BEGIN
+
+IF NOT EXISTS (
+    SELECT 1
+    FROM   pg_class c 
+    JOIN   pg_namespace n ON n.oid = c.relnamespace 
+    WHERE  c.relname = 'ix_t_filesystem_lowercasepath' 
+    AND    n.nspname = 'public' -- 'public' by default
+    ) THEN
+
+    CREATE INDEX IX_T_Filesystem_LowerCasePath ON T_Filesystem (FS_LowercasePath);
+END IF;
+
+END$$;

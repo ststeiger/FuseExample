@@ -1,10 +1,36 @@
 
+
+
+using System.Linq;
+using System.Collections.Generic;
+
+
+using FuseExample;
+
 namespace FuseExample
 {
 
 
     class MainClass
     {
+
+		public void roflmao()
+		{}
+
+
+		public void rofl()
+		{
+			var tsk0 = new System.Threading.Tasks.Task (roflmao);
+
+			System.Threading.Tasks.TaskFactory tf = new System.Threading.Tasks.TaskFactory ();
+
+			System.Threading.Tasks.Task tsk1 = tf.StartNew (roflmao);
+			// tsk1.ContinueWith (roflmao); // Execute another Async task when the current task is done:
+
+			System.Threading.Tasks.Task.WaitAll (tsk0, tsk1);
+			// System.Threading.Tasks.Parallel.For (1, 10, roflmao);
+		}
+
 
 
 		public class DebugTraceListener : System.Diagnostics.TraceListener
@@ -78,9 +104,8 @@ namespace FuseExample
 		}
 
 
-
         public static void Main(string[] args)
-        {
+		{
 			System.Diagnostics.ConsoleTraceListener consoleTracer;
 			consoleTracer = new System.Diagnostics.ConsoleTraceListener(true);
 			consoleTracer.Name = "Mono.Fuse.DebugInfo";
@@ -91,7 +116,8 @@ namespace FuseExample
 
 
 
-            string[] argsMountPoint = new string[] { "/mnt/fuse" };
+			 
+			string[] argsMountPoint = new string[] { "/mnt/fuse" }; //, "-o", "use_ino" };
             string[] argsRedirectFS = new string[] { "/mnt/fuse", "/root/Downloads/fuse-tutorial-2014-06-12/html" };
 
             System.Console.WriteLine("Attempting to mount filesystem ...");

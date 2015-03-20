@@ -52,6 +52,72 @@ namespace FuseExample
 		}
 
 
+		public class cHandleStatusInfo
+		{
+			public ulong FileHandle;
+			protected long m_Size;
+
+			public long Size
+			{
+				get
+				{ 
+					return System.Text.Encoding.UTF8.GetBytes ("Hello World\n").LongLength;
+				}
+
+				set
+				{ 
+					m_Size = value;
+				}
+			}
+
+			public uint OwnerId=0;
+			public uint OwnerPrimaryGroupId= 0;
+
+			public string PermissionString;
+
+		}
+
+
+		protected override Errno OnGetHandleStatus (string path, Mono.Fuse.OpenedPathInfo info, out Stat buf)
+		{
+			System.Console.WriteLine ("OnGetHandleStatus (\"{0}\")", path);
+			buf = new Stat ();
+
+			string strSQL =  string.Format( @"
+SELECT 
+	 FS_Id AS FileHandle 
+	,0 AS Size
+	--,FS_UnixPermissions
+	,'-r--r--r--' AS PermissionString 
+	,FS_OwnerId AS OwnerId
+	,FS_OwnerGroupId AS OwnerPrimaryGroupId
+	--,FS_IsReadOnly 
+	--FS_IsFolder 
+FROM T_Filesystem 
+WHERE FS_LowerCasePath = '{0}'
+;
+", olc(path).Replace("'","''")
+);
+
+			cHandleStatusInfo HandleStatusInfo = SQL.GetClass<cHandleStatusInfo> (strSQL);
+
+			// only the st_uid, st_gid, st_size, and st_mode
+
+			buf.st_uid = HandleStatusInfo.OwnerId;
+			buf.st_gid = HandleStatusInfo.OwnerPrimaryGroupId;
+
+			buf.st_ino = HandleStatusInfo.FileHandle;
+			buf.st_size = HandleStatusInfo.Size;
+			buf.st_mode = NativeConvert.FromUnixPermissionString(HandleStatusInfo.PermissionString);
+
+
+			// int r = Syscall.fstat ((int)info.Handle, out buf);
+			// if (r == -1) return Stdlib.GetLastError ();
+
+			return 0;
+		}
+
+
 		protected override Errno OnAccessPath (string path, AccessModes mask)
 		{
 			System.Console.WriteLine ("OnAccessPath (path: \"{0}\")", path);
@@ -67,38 +133,55 @@ namespace FuseExample
 		}
 
 
+		public class cEntityInfo
+		{
+			public cEntityInfo()
+			{}
 
-        protected bool? IsFolder(string strPath)
+			public cEntityInfo(bool pIsInvalid)
+			{
+				this.IsInvalid = pIsInvalid;
+			}
+
+
+			public bool IsInvalid = false;
+			public bool IsFolder = false;
+			public bool IsLink = false;
+		}
+
+		protected cEntityInfo GetEntityInfo(string strPath)
         {
             //lock (objLock)
             //{
-            bool? bIsFolder = null;
+			cEntityInfo EntityInfo = null;
 
-            if (string.IsNullOrEmpty(strPath))
-                return bIsFolder;
-
-
-			strPath = olc(strPath);
-
-            strPath = strPath.Replace("'", "''");
-            string strSQL = string.Format(
-				@"SELECT FS_isFolder  FROM T_Filesystem WHERE FS_LowerCasePath = '{0}';"
-                , strPath
-            );
+			if (string.IsNullOrEmpty (strPath))
+				return EntityInfo;
 
             try
             {
-                object obj = SQL.ExecuteScalar(strSQL);
+				// object obj = SQL.ExecuteScalar(strSQL);
+				// if (obj != null) EntityInfo.IsFolder = System.Convert.ToBoolean(obj);
+				// else EntityInfo.IsInvalid = true;
 
-                if (obj != null)
-                    bIsFolder = System.Convert.ToBoolean(obj);
+				string strSQL = @"
+SELECT 
+	 FS_isFolder AS IsFolder 
+	,CASE WHEN FS_Id <> FS_Target_FS_Id THEN 1 ELSE 0 END AS isLink 
+FROM T_Filesystem WHERE FS_LowerCasePath = '{0}';";
+				strSQL = string.Format(strSQL, olc(strPath).Replace("'", "''"));
+				EntityInfo = SQL.GetClass<cEntityInfo>(strSQL);
+
+				if (EntityInfo == null)
+					EntityInfo = new cEntityInfo(true);
             }
             catch (System.Exception ex)
             {
                 System.Console.WriteLine(ex.Message);
+				EntityInfo = new cEntityInfo(true);
             }
 
-            return bIsFolder;
+			return EntityInfo;
             // } // End Lock
         }
 
@@ -180,7 +263,6 @@ SELECT
             return 0;
         }
 
-        // /mnt/fuse/1081 Montpreveyres/
 
         protected override Errno OnOpenHandle(string path, Mono.Fuse.OpenedPathInfo fi)
         {
@@ -275,16 +357,96 @@ SELECT
         }
 
 
-		protected override Errno OnCreateSymbolicLink (string from, string to)
+		protected string mountPoint = "/mnt/fuse";
+
+		// ln -s /path/to/file-name link-name
+		protected override Errno OnCreateSymbolicLink (string to, string from)
 		{
 			// int r = Syscall.symlink (from, basedir + to);
 			// if (r == -1) return Stdlib.GetLastError ();
+			System.Console.WriteLine ("Symlink from {0} to {1}", from, to);
+
+
+			if (to.StartsWith (mountPoint, System.StringComparison.InvariantCultureIgnoreCase))
+				to = to.Substring (mountPoint.Length);
+
+			to = to.TrimEnd (System.IO.Path.DirectorySeparatorChar);
+			from = from.TrimEnd (System.IO.Path.DirectorySeparatorChar);
+
+			string parentPath = System.IO.Path.GetDirectoryName (from);
+			string dir = System.IO.Path.GetFileName(from);
+
+			string strSQL = @"
+INSERT INTO T_Filesystem(FS_Id, FS_Target_FS_Id, FS_Parent_FS_Id, FS_Text, FS_Path, FS_LowerCasePath, FS_isFolder) 
+SELECT 
+	 (SELECT COALESCE(MAX(FS_Id), 0) + 1 AS newid FROM T_Filesystem) AS FS_Id 
+    ,(SELECT FS_Id AS newid FROM T_Filesystem WHERE FS_LowerCasePath = '{4}' ) AS FS_Target_FS_Id
+	,(SELECT FS_Id FROM T_Filesystem WHERE FS_LowerCasePath = '{2}') AS FS_Parent_FS_Id 
+	,'{0}' AS FS_Text 
+	,'{1}/{0}' AS FS_Path 
+	,'{3}' AS FS_LowerCasePath 
+     -- Assuming target is on the same filesystem
+	,(SELECT FS_isFolder AS newid FROM T_Filesystem WHERE FS_LowerCasePath = '{4}' ) AS FS_isFolder
+";
+
+			strSQL = string.Format(strSQL
+				,dir.Replace("'","''") // FS_Text
+				,parentPath.Replace("'","''") // FS_Path
+				,olc(parentPath).Replace("'","''") // FS_Path
+				,olc(parentPath).Replace("'","''") + "/" +  olc(dir).Replace("'","''")// FS_LowerCasePath
+				,olc(to).Replace("'","''")
+			);
+
+			System.Console.WriteLine(strSQL);
+			SQL.ExecuteNonQuery(strSQL);
+
+			return 0;
+		}
+
+		protected override Errno OnReadSymbolicLink (string path, out string target)
+		{
+			System.Console.WriteLine ("OnReadSymbolicLink for \"{0}\"", path);
+			path = olc (path);
+
+			string strSQL = string.Format (@"SELECT FS_Path FROM T_Filesystem 
+WHERE FS_ID = (SELECT FS_Target_FS_Id FROM T_Filesystem WHERE FS_LowerCasePath = '{0}') 
+", path.Replace("'","''")
+);
+
+			object obj = SQL.ExecuteScalar (strSQL);
+
+				// mountPoint may not end on /
+			target = mountPoint + System.Convert.ToString(obj);
+			System.Console.WriteLine (target);
+
+			return 0;
+		}
+
+
+		protected override Errno OnTruncateFile (string path, long size)
+		{
+			System.Console.WriteLine ("OnTruncateFile for \"{0}\"", path);
+			// int r = Syscall.truncate (basedir + path, size);
+			// if (r == -1) return Stdlib.GetLastError ();
+
+			return 0;
+		}
+
+		protected override Errno OnTruncateHandle (string path, Mono.Fuse.OpenedPathInfo info, long size)
+		{
+			System.Console.WriteLine ("OnTruncateHandle for \"{0}\"", path);
+
+			// int r = Syscall.ftruncate ((int)info.Handle, size);
+			// if (r == -1) return Stdlib.GetLastError ();
+
 			return 0;
 		}
 
 
 		protected override Errno OnRemoveFile (string path)
 		{
+			System.Console.WriteLine ("OnRemoveFile for \"{0}\"", path);
+
 			string strSQL = @"DELETE FROM T_Filesystem WHERE FS_LowerCasePath = '{0}';";
 			strSQL = string.Format(strSQL, olc(path).Replace("'","''"));
 			SQL.ExecuteNonQuery (strSQL);
@@ -297,6 +459,8 @@ SELECT
 
 		protected override Errno OnRemoveDirectory (string path)
 		{
+			System.Console.WriteLine ("OnRemoveDirectory for \"{0}\"", path);
+
 			string strSQL = @"DELETE FROM T_Filesystem WHERE FS_LowerCasePath = '{0}'";
 			strSQL = string.Format(strSQL, olc(path).Replace("'","''"));
 
@@ -312,8 +476,7 @@ SELECT
         protected override unsafe Errno OnWriteHandle(string path, Mono.Fuse.OpenedPathInfo info,
             byte[] buf, long offset, out int bytesWritten)
         {
-			System.Console.WriteLine("OnWriteHandle");
-
+			System.Console.WriteLine ("OnWriteHandle for \"{0}\"", path);
 
             Errno e = 0;
 
@@ -327,11 +490,32 @@ SELECT
         }
 
 
+		protected override Errno OnOpenDirectory (string path, Mono.Fuse.OpenedPathInfo info)
+		{
+			System.Console.WriteLine ("OnOpenDirectory (\"{0}\")", path);
+
+			// System.IntPtr dp = Syscall.opendir (basedir + path);
+
+			// if (dp == System.IntPtr.Zero) return Stdlib.GetLastError ();
+			// info.Handle = dp;
+
+			return 0;
+		}
+
+		protected override Errno OnReleaseDirectory (string path, Mono.Fuse.OpenedPathInfo info)
+		{
+			System.Console.WriteLine ("OnReleaseDirectory (\"{0}\")", path);
+
+			// System.IntPtr dp = (System.IntPtr)info.Handle;
+			// Syscall.closedir (dp);
+			return 0;
+		}
+
         protected override Errno OnReadDirectory(string directory,
                                                   Mono.Fuse.OpenedPathInfo info,
                                                   out IEnumerable<Mono.Fuse.DirectoryEntry> names)
         {
-			System.Console.WriteLine("OnReadDirectory");
+			System.Console.WriteLine("OnReadDirectory (\"{0}\")", directory);
 			directory = olc(directory);
 
 
@@ -411,9 +595,25 @@ ORDER BY FS_Text
         }
 
 
+		protected override Errno OnGetFileSystemStatus (string path, out Statvfs stbuf)
+		{
+			System.Console.WriteLine("OnGetFileSystemStatus (\"{0}\")", path);
+				// int r = Syscall.statvfs (basedir + path, out stbuf);
+			// if (r == -1) return Stdlib.GetLastError ();
+
+			stbuf = new Statvfs ();
+
+			// stbuf.f_bavail stbuf.f_bfree
+			stbuf.f_namemax = 4000;
+			stbuf.f_flag = MountFlags.ST_RDONLY|MountFlags.ST_NODEV|MountFlags.ST_NOATIME|MountFlags.ST_NODIRATIME;
+
+			return 0;
+		}
+
+
         protected override Errno OnGetPathStatus(string path, out Stat stbuf)
         {
-			// System.Console.WriteLine("OnGetPathStatus for path \"{0}\"", path);
+			System.Console.WriteLine("OnGetPathStatus for path \"{0}\"", path);
 
             stbuf = new Stat();
 
@@ -457,15 +657,19 @@ ORDER BY FS_Text
 				return 0;
 			}
                 
-
-            bool? isf = IsFolder(path);
-            if (isf.HasValue)
-            {
-                if (isf.Value)
-                {
-                    stbuf.st_mode = NativeConvert.FromUnixPermissionString("dr-xr-xr-x");
-                    stbuf.st_nlink = 1;
-                }
+			cEntityInfo ei = GetEntityInfo (path);
+			if (!ei.IsInvalid)
+			{
+				if (ei.IsLink)
+				{
+					stbuf.st_mode = NativeConvert.FromUnixPermissionString("lrwxrwxrwx");
+					stbuf.st_nlink = 1;
+				}
+				else if (ei.IsFolder)
+				{
+					stbuf.st_mode = NativeConvert.FromUnixPermissionString("dr-xr-xr-x");
+					stbuf.st_nlink = 1;
+				}
                 else
                 {
                     stbuf.st_mode = NativeConvert.FromUnixPermissionString("-r--r--r--");
@@ -479,8 +683,8 @@ ORDER BY FS_Text
 
 				return Errno.ENOENT;
 				// This is wrong...
-                stbuf.st_mode = NativeConvert.FromUnixPermissionString("dr-xr-xr-x");
-                stbuf.st_nlink = 1;
+                // stbuf.st_mode = NativeConvert.FromUnixPermissionString("dr-xr-xr-x");
+				// stbuf.st_nlink = 1;
             }
 
             return 0;

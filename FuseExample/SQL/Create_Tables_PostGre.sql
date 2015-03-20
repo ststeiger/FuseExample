@@ -57,4 +57,3 @@ CREATE TABLE floortype
   floortype_mez_sort integer,
   CONSTRAINT pk_floortype PRIMARY KEY (floortype_uid)
 );
- 
