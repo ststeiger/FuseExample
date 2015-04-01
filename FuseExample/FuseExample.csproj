@@ -59,6 +59,7 @@
     <Compile Include="Examples\TypeNavigatorFS.cs" />
     <Compile Include="SqlFS.cs" />
     <Compile Include="TestFilesystem.cs" />
+    <Compile Include="DataContainers.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>

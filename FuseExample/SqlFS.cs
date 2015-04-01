@@ -52,32 +52,6 @@ namespace FuseExample
 		}
 
 
-		public class cHandleStatusInfo
-		{
-			public ulong FileHandle;
-			protected long m_Size;
-
-			public long Size
-			{
-				get
-				{ 
-					return System.Text.Encoding.UTF8.GetBytes ("Hello World\n").LongLength;
-				}
-
-				set
-				{ 
-					m_Size = value;
-				}
-			}
-
-			public uint OwnerId=0;
-			public uint OwnerPrimaryGroupId= 0;
-
-			public string PermissionString;
-
-		}
-
-
 		protected override Errno OnGetHandleStatus (string path, Mono.Fuse.OpenedPathInfo info, out Stat buf)
 		{
 			System.Console.WriteLine ("OnGetHandleStatus (\"{0}\")", path);
@@ -133,22 +107,6 @@ WHERE FS_LowerCasePath = '{0}'
 		}
 
 
-		public class cEntityInfo
-		{
-			public cEntityInfo()
-			{}
-
-			public cEntityInfo(bool pIsInvalid)
-			{
-				this.IsInvalid = pIsInvalid;
-			}
-
-
-			public bool IsInvalid = false;
-			public bool IsFolder = false;
-			public bool IsLink = false;
-		}
-
 		protected cEntityInfo GetEntityInfo(string strPath)
         {
             //lock (objLock)
@@ -199,8 +157,9 @@ FROM T_Filesystem WHERE FS_LowerCasePath = '{0}';";
 				return "AND FS_Parent_FS_Id IS NULL ";
 
             strPath = strPath.Replace("'", "''");
-			string strSQL = string.Format(@"SELECT fs_id FROM T_Filesystem WHERE (1=1) AND FS_LowerCasePath = '{0}'"
-                                 , strPath
+			string strSQL = string.Format(@"SELECT fs_id FROM T_Filesystem 
+WHERE (1=1) AND FS_LowerCasePath = '{0}' "
+				, strPath
             );
 
             try

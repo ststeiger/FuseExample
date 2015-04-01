@@ -298,6 +298,7 @@ namespace FuseExample
 			return 0;
 		}
 
+
 		protected override Errno OnOpenHandle (string path, OpenedPathInfo info)
 		{
 			int fd = Syscall.open (basedir + path, info.OpenFlags);
