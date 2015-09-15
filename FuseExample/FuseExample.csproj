@@ -93,6 +93,8 @@
     <Content Include="SQL\MS_SQL\06_T_Overview3.sql" />
     <Content Include="SQL\MS_SQL\08_Insert_T_FileSystem.sql" />
     <None Include="SQL\MySQL\02_Insert_Data.sql" />
+    <None Include="SQL\MySQL\08_Insert_T_FileSystemNoBAp.sql" />
+    <None Include="SQL\MySQL\07_T_FileSystem.sql" />
     <Content Include="SQL\PostGre\05_T_Overview2.sql" />
     <Content Include="SQL\PostGre\06_T_Overview3.sql" />
     <Content Include="SQL\PostGre\08_Insert_T_FileSystem.sql" />
