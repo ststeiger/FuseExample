@@ -22,14 +22,14 @@ CREATE TABLE IF NOT EXISTS T_FileSystem
 	,FS_WriteLock bit NULL 
 
 
-	,FS_CreationTime timestamp without time zone
-	,FS_CreationTimeUTC timestamp without time zone
+	,FS_CreationTime datetime 
+	,FS_CreationTimeUTC datetime 
 
-	,FS_LastAccessTime timestamp without time zone
-	,FS_LastAccessTimeUTC timestamp without time zone
+	,FS_LastAccessTime datetime 
+	,FS_LastAccessTimeUTC datetime 
 
-	,FS_LastWriteTime timestamp without time zone
-	,FS_LastWriteTimeUTC timestamp without time zone
+	,FS_LastWriteTime datetime 
+	,FS_LastWriteTimeUTC datetime 
 
 	,FS_OwnerId bigint NULL 
 	,FS_OwnerGroupId bigint NULL 
@@ -37,22 +37,3 @@ CREATE TABLE IF NOT EXISTS T_FileSystem
 	 
 	,CONSTRAINT PK_T_FileSystem PRIMARY KEY(FS_Id) 
 ); 
-
-
-
-
-DO $$
-BEGIN
-
-IF NOT EXISTS (
-    SELECT 1
-    FROM   pg_class c 
-    JOIN   pg_namespace n ON n.oid = c.relnamespace 
-    WHERE  c.relname = 'ix_t_filesystem_lowercasepath' 
-    AND    n.nspname = 'public' -- 'public' by default
-    ) THEN
-
-    CREATE INDEX IX_T_Filesystem_LowerCasePath ON T_Filesystem (FS_LowercasePath);
-END IF;
-
-END$$;
