@@ -57,7 +57,7 @@ namespace FuseExample
 			System.Console.WriteLine ("OnGetHandleStatus (\"{0}\")", path);
 			buf = new Stat ();
 
-			string strSQL =  string.Format( @"
+			string strSQL =  string.Format( @"ui
 SELECT 
 	 FS_Id AS FileHandle 
 	,0 AS Size

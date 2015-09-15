@@ -82,5 +82,6 @@
     <None Include="SQL\t_overview.sql" />
     <None Include="SQL\fs.sql" />
     <None Include="SQL\pgfs.sql" />
+    <None Include="SQL\PostGreRecursive.sql" />
   </ItemGroup>
 </Project>

@@ -33,7 +33,7 @@ CREATE TABLE floor
   floor_building_uid uuid,
   floor_floortype_uid uuid,
   floor_no integer,
-  floor_isexterior bit,
+  floor_isexterior boolean,
   CONSTRAINT pk_floor PRIMARY KEY (floor_uid)
 );
 
