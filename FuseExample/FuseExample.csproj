@@ -82,6 +82,7 @@
     <None Include="SQL\PostGre\04_t_overview.sql" />
     <None Include="SQL\MS_SQL\07_T_FileSystem.sql" />
     <None Include="SQL\PostGre\07_T_FileSystem.sql" />
+    <None Include="SQL\MySQL\08_Insert_T_FileSystem.sql" />
   </ItemGroup>
   <ItemGroup>
     <None Include="SQL\MS_SQL\04_T_Overview.sql" />
