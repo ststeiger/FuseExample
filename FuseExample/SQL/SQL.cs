@@ -275,12 +275,12 @@ namespace FuseExample
         {
             Npgsql.NpgsqlConnectionStringBuilder csb = new Npgsql.NpgsqlConnectionStringBuilder();
             csb.Host = "127.0.0.1";
-            csb.Database = "testdb";
+            csb.Database = "sqlfs";
 
             csb.UserName = "pgfuse";
             csb.Password = "p";
 
-            // PORT=5432;TIMEOUT=15;POOLING=True;MINPOOLSIZE=1;MAXPOOLSIZE=20;COMMANDTIMEOUT=20;COMPATIBLE=2.2.0.0;HOST=127.0.0.1;DATABASE=testdb;USER ID=postgres;PASSWORD=Inspiron1300
+            // PORT=5432;TIMEOUT=15;POOLING=True;MINPOOLSIZE=1;MAXPOOLSIZE=20;COMMANDTIMEOUT=20;COMPATIBLE=2.2.0.0;HOST=127.0.0.1;DATABASE=testdb;USER ID=postgres;PASSWORD=TopSecret
             return csb.ConnectionString;
         }
 
@@ -292,7 +292,7 @@ namespace FuseExample
             csb.Database = "testdb";
 
             csb.UserID = "root";
-            csb.Password = "Inspiron1300";
+            csb.Password = "TopSecret";
 
             return csb.ConnectionString;
         }
@@ -305,8 +305,11 @@ namespace FuseExample
             csb.DataSource = "127.0.0.1";
             csb.InitialCatalog = "testdb";
 
-            csb.UserID = "root";
-            csb.Password = "Inspiron1300";
+            if (!csb.IntegratedSecurity)
+            {
+                csb.UserID = "sqlfuse";
+                csb.Password = "p";
+            }
 
             return csb.ConnectionString;
         }

@@ -4,8 +4,8 @@
 INSERT INTO T_FileSystem
 (
 	 FS_Id
-	,FS_TargetFL
-	,FS_ParentFL
+	,FS_Target_FS_Id
+	,FS_Parent_FS_Id
 	,FS_Path
 	,FS_LowerCasePath
 	,FS_Text
@@ -36,12 +36,12 @@ SELECT
 	,obj_text AS FS_Text -- nvarchar(4000)
 	,LOWER(obj_text) AS FS_LowerCaseText -- nvarchar(4000)
 	,NULL AS FS_NameWithoutExtension -- nvarchar(4000)
-	,'false' AS FS_Extension -- nvarchar(255)
-	,'false' AS FS_IsCompressed -- bit
-	,'false' AS FS_IsEncrypted -- bit
-	,'false' AS FS_IsReadOnly -- bit
-	,'false' AS FS_ReadLock -- bit
-	,'false' AS FS_WriteLock -- bit
+	,0::bit AS FS_Extension -- nvarchar(255)
+	,0::bit AS FS_IsCompressed -- bit
+	,0::bit AS FS_IsEncrypted -- bit
+	,0::bit AS FS_IsReadOnly -- bit
+	,0::bit AS FS_ReadLock -- bit
+	,0::bit AS FS_WriteLock -- bit
 	,CURRENT_TIMESTAMP AS FS_CreationTime -- datetime2
 	,CURRENT_TIMESTAMP AS FS_CreationTimeUTC -- datetime2
 	,CURRENT_TIMESTAMP AS FS_LastAccessTime -- datetime2
@@ -53,3 +53,6 @@ SELECT
 	,999 AS FS_UnixPermissions -- int 
 FROM T_Overview3 
 ; 
+
+
+-- CREATE ROLE pgfuse LOGIN PASSWORD 'p' -- SUPERUSER INHERIT CREATEDB CREATEROLE REPLICATION; 
