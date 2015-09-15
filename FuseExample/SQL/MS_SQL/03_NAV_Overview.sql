@@ -1,16 +1,17 @@
 
 -- Use default-schema
 
-IF 0 = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.views WHERE table_name = 'nav_overview') 
-EXEC('DROP VIEW nav_overview;');
+IF 0 <> (SELECT COUNT(*) FROM INFORMATION_SCHEMA.views WHERE table_name = 'NAV_Overview') 
+EXEC('DROP VIEW NAV_Overview;');
+GO 
 
 
-CREATE VIEW nav_overview 
+CREATE VIEW NAV_Overview 
 AS 
 SELECT 
 	 site.site_uid AS obj_uid
 	,CAST(NULL AS uniqueidentifier) AS obj_parent_uid
-	,site.site_no::integer AS obj_no
+	,CAST(site.site_no AS integer) AS obj_no
 	,site.site_no + ' ' + site.site_text AS obj_text
 	,CAST('/' + site.site_no + ' ' + site.site_text AS varchar(8000)) AS obj_path
 	,1 AS isdir 
@@ -48,5 +49,4 @@ FROM floor
 LEFT JOIN floortype ON floor.floor_floortype_uid = floortype.floortype_uid 
 LEFT JOIN building ON building_uid = floor_building_uid 
 LEFT JOIN site ON site_uid = building_site_uid 
-WHERE floor_isexterior = 'f'
-
+WHERE floor_isexterior = 'false'

@@ -68,20 +68,32 @@
     </None>
     <None Include="Libs\Npgsql.dll" />
     <None Include="Libs\MySql.Data.dll" />
-    <None Include="SQL\mysql_nav_overview.sql" />
-    <None Include="SQL\pg_nav_overview.sql" />
-    <None Include="SQL\Insert_Data.sql" />
-    <None Include="SQL\Create_Tables_MySQL.sql" />
-    <None Include="SQL\Create_Tables_PostGre.sql" />
-    <None Include="SQL\Create_Tables_MS_SQL.sql" />
-    <None Include="SQL\ms_nav_overview.sql" />
+    <None Include="SQL\MySQL\03_NAV_Overview.sql" />
+    <None Include="SQL\PostGre\03_NAV_Overview.sql" />
+    <None Include="SQL\PostGre\02_Insert_Data.sql" />
+    <None Include="SQL\MySQL\01_Create_Tables.sql" />
+    <None Include="SQL\PostGre\01_Create_Tables.sql" />
+    <None Include="SQL\MS_SQL\01_Create_Tables.sql" />
+    <None Include="SQL\MS_SQL\03_NAV_Overview.sql" />
     <None Include="Libs\Mono.Posix.dll" />
     <None Include="Libs\Mono.Fuse.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="SQL\t_overview.sql" />
-    <None Include="SQL\fs.sql" />
-    <None Include="SQL\pgfs.sql" />
-    <None Include="SQL\PostGreRecursive.sql" />
+    <None Include="SQL\PostGre\04_t_overview.sql" />
+    <None Include="SQL\MS_SQL\07_T_FileSystem.sql" />
+    <None Include="SQL\PostGre\07_T_FileSystem.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="SQL\MS_SQL\04_T_Overview.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="SQL\MS_SQL\02_Insert_Data.sql" />
+    <Content Include="SQL\MS_SQL\05_T_Overview2.sql" />
+    <Content Include="SQL\MS_SQL\06_T_Overview3.sql" />
+    <Content Include="SQL\MS_SQL\08_Insert_T_FileSystem.sql" />
+    <None Include="SQL\MySQL\02_Insert_Data.sql" />
+    <Content Include="SQL\PostGre\05_T_Overview2.sql" />
+    <Content Include="SQL\PostGre\06_T_Overview3.sql" />
+    <Content Include="SQL\PostGre\08_Insert_T_FileSystem.sql" />
   </ItemGroup>
 </Project>
